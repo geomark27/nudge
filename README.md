@@ -23,8 +23,16 @@ scripts/             Utilidades (íconos provisionales)
   - **Fijo**: cada N minutos alineado al inicio de la franja (08:00, 10:00, 12:00…).
   - **Desde que lo marco hecho**: el intervalo se reinicia al pulsar "Hecho".
   - **Horas exactas**: lista de horas; respetan los días pero no la franja.
+- La franja puede cruzar la medianoche (22:00–02:00): cuenta para el día en que empieza.
 - Si no respondes, insiste cada N minutos (configurable, 0 = no insistir).
 - "Pausar" silencia todo hasta la hora indicada; al terminar, lo vencido suena una vez.
+- **Sonidos**: cinco tonos integrados (Campanita, Suave, Doble toque, Gota, Alarma) o tus propios
+  MP3/WAV/OGG/M4A (hasta 10 MB), que se copian a la carpeta `sounds/` de la app.
+- **Cumplimiento**: por recordatorio, hechas / pospuestas / descartadas en los últimos 7 o 30 días;
+  el porcentaje es hechas ÷ (hechas + descartadas).
+- **Respaldo**: exporta recordatorios y tema a JSON; al importar puedes añadir o reemplazar.
+  No incluye historial ni archivos de sonido.
+- **Tema** claro, oscuro o el del sistema.
 - Datos en `nudge.db` dentro del directorio de datos de la app
   (Windows `%APPDATA%\dev.ramosmg.nudge`, Linux `~/.local/share/dev.ramosmg.nudge`,
   macOS `~/Library/Application Support/dev.ramosmg.nudge`).
@@ -55,11 +63,66 @@ Build Tools. WebView2 ya viene en Windows 10/11. Compila desde una ruta de Windo
 
 ## Desarrollo
 
+El `Makefile` agrupa los comandos (`make` muestra la lista; `make check` = formato + clippy + pruebas):
+
 ```sh
 cargo test -p nudge-core      # pruebas del núcleo (no requiere GTK ni WebView)
 cargo tauri dev               # ejecuta la app con recarga
 cargo tauri build             # instaladores: MSI/NSIS, DEB/RPM/AppImage, DMG
 ```
+
+## Instalación
+
+**Windows** (PowerShell):
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/geomark27/nudge/main/scripts/install.ps1 | iex
+```
+
+**Linux y macOS**:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/geomark27/nudge/main/scripts/install.sh | bash
+```
+
+El instalador descarga la última versión de
+[Releases](https://github.com/geomark27/nudge/releases/latest), la instala y abre Nudge. Para una
+versión concreta: `$env:NUDGE_VERSION = "v0.1.0"` antes del comando en Windows, o
+`… | NUDGE_VERSION=v0.1.0 bash` en Linux/macOS.
+
+- **Windows**: instalación por usuario en `%LOCALAPPDATA%\Nudge`, sin permisos de administrador.
+- **Linux**: `.deb` con apt, `.rpm` con dnf/zypper (pide `sudo`) o, si no hay ninguno, AppImage en
+  `~/.local/bin/nudge` (requiere `libfuse2`).
+- **macOS**: copia `Nudge.app` a `/Applications` (Intel y Apple Silicon).
+
+**Actualizaciones**: Nudge busca versiones nuevas al abrir y cada 6 horas. Cuando hay una, avisa y
+se actualiza con **Actualizar ahora**: descarga, verifica la firma e instala sola. También puedes
+volver a ejecutar el instalador de una línea. Tus recordatorios, historial y sonidos se conservan.
+
+Instalación manual: descarga el archivo de tu sistema desde Releases. Como no está firmado con un
+certificado de pago, Windows (SmartScreen: "Más información → Ejecutar de todas formas") y macOS
+(clic derecho → "Abrir") avisan la primera vez. Con el instalador de una línea no aparece ese aviso.
+
+## Versiones y releases
+
+**Una sola vez**, antes del primer release: `make updater-key`. Crea la llave que firma las actualizaciones
+(`~/.tauri/nudge.key`; respáldala), la guarda como secreto del repo y escribe la llave pública en
+`tauri.conf.json`, que va en el commit.
+
+Las versiones siguen [SemVer](https://semver.org/lang/es/) y los cambios se anotan en
+[`CHANGELOG.md`](CHANGELOG.md), en la sección **[Unreleased]**, a medida que se hacen.
+
+```sh
+make notes                                  # qué saldrá en el próximo release
+make release VERSION=0.2.0 DRY_RUN=1        # simula: verifica todo sin tocar nada
+make release VERSION=0.2.0                  # publica
+```
+
+`make release` verifica la rama `main`, que no haya cambios sin commit, que el tag esté libre y que pase
+`make check`. Luego fija la versión en `Cargo.toml` y `tauri.conf.json`, convierte [Unreleased] en la
+sección de la versión, crea el commit `release: vX.Y.Z` y el tag, sube ambos y abre el release en
+borrador con `gh`. El workflow [`release.yml`](.github/workflows/release.yml) compila los instaladores
+en Windows, Linux y macOS, los adjunta al release y lo publica cuando los tres terminan bien.
 
 ## Pendientes conocidos
 
@@ -70,4 +133,6 @@ cargo tauri build             # instaladores: MSI/NSIS, DEB/RPM/AppImage, DMG
 - En Windows, durante `cargo tauri dev` las notificaciones nativas aparecen a nombre de
   PowerShell; con la app instalada usan el nombre de Nudge.
 - macOS requiere firmar la app para que las notificaciones nativas sean fiables.
-- Siguientes pasos sugeridos: exportar/importar JSON, sonidos personalizados, estadísticas.
+- En Linux, reproducir MP3/OGG propios depende de los plugins de GStreamer instalados
+  (`gstreamer1.0-plugins-good`/`-bad`/`-libav`); los tonos integrados no los necesitan.
+- Siguientes pasos sugeridos: volumen por recordatorio, gráfico diario de cumplimiento.

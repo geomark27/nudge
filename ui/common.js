@@ -65,7 +65,9 @@ function fmtDays(mask) {
 
 function describeSchedule(r) {
   const s = r.schedule;
-  const range = `${r.window.start}–${r.window.end}`;
+  // "HH:MM" se compara bien como texto; fin < inicio = cruza la medianoche.
+  const overnight = r.window.end < r.window.start ? " (al día siguiente)" : "";
+  const range = `${r.window.start}–${r.window.end}${overnight}`;
   let text;
   if (s.kind === "times") text = `A las ${s.times.join(", ")}`;
   else if (s.anchor === "from_done") text = `Cada ${fmtDuration(s.every_min)} desde que lo marcas hecho · ${range}`;
@@ -73,25 +75,82 @@ function describeSchedule(r) {
   return `${text} · ${fmtDays(r.days)}`;
 }
 
-/** Campanita breve con Web Audio; no necesita archivos de sonido. */
-function chime() {
+// ---------- Sonidos ----------
+
+const FILE_TONE = "file:";
+const AUDIO_TYPES = { mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4" };
+
+/**
+ * Tonos integrados, sintetizados con Web Audio (no necesitan archivos).
+ * Cada nota: [frecuencia Hz, inicio s, duración s]. Las claves deben coincidir con
+ * `BUILTIN_TONES` en `crates/nudge-core/src/sound.rs`.
+ */
+const TONES = {
+  chime: { label: "Campanita", wave: "sine", gain: 0.3, notes: [[880, 0, 0.6], [1318.5, 0.18, 0.6]] },
+  soft: { label: "Suave", wave: "sine", gain: 0.18, notes: [[523.3, 0, 0.9], [659.3, 0.25, 1.1]] },
+  double: { label: "Doble toque", wave: "triangle", gain: 0.3, notes: [[987.8, 0, 0.18], [987.8, 0.24, 0.18]] },
+  drop: { label: "Gota", wave: "sine", gain: 0.35, notes: [[1567.98, 0, 0.12], [1046.5, 0.06, 0.25]] },
+  alarm: {
+    label: "Alarma",
+    wave: "square",
+    gain: 0.12,
+    notes: [0, 0.3, 0.6, 0.9].flatMap((t) => [[1046.5, t, 0.12], [784, t + 0.14, 0.12]]),
+  },
+};
+
+/** Nombre visible de un tono: integrado o archivo propio. */
+function toneLabel(tone) {
+  if (tone.startsWith(FILE_TONE)) return tone.slice(FILE_TONE.length);
+  return TONES[tone]?.label ?? tone;
+}
+
+/** Reproduce un tono; si es un archivo que ya no existe, suena la campanita. */
+async function playTone(tone = "chime") {
+  if (tone.startsWith(FILE_TONE)) {
+    try {
+      await playFile(tone.slice(FILE_TONE.length));
+      return;
+    } catch (err) {
+      console.warn("no se pudo reproducir el sonido propio; uso la campanita", err);
+      tone = "chime";
+    }
+  }
+  synth(TONES[tone] ?? TONES.chime);
+}
+
+async function playFile(name) {
+  const bytes = await invoke("read_sound", { name });
+  const type = AUDIO_TYPES[name.split(".").pop().toLowerCase()] ?? "";
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
+  const audio = new Audio(url);
+  audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
+  try {
+    await audio.play();
+  } catch (err) {
+    URL.revokeObjectURL(url);
+    throw err;
+  }
+}
+
+function synth({ wave, gain: peak, notes }) {
   try {
     const ctx = new AudioContext();
-    const notes = [880, 1318.5];
-    notes.forEach((freq, i) => {
+    let end = 0;
+    for (const [freq, offset, duration] of notes) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const start = ctx.currentTime + i * 0.18;
-      osc.type = "sine";
+      const start = ctx.currentTime + offset;
+      osc.type = wave;
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.6);
+      gain.gain.exponentialRampToValueAtTime(peak, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
       osc.connect(gain).connect(ctx.destination);
       osc.start(start);
-      osc.stop(start + 0.65);
-    });
-    setTimeout(() => ctx.close(), 1500);
+      osc.stop(start + duration + 0.05);
+      end = Math.max(end, offset + duration);
+    }
+    setTimeout(() => ctx.close(), (end + 0.5) * 1000);
   } catch (err) {
     console.warn("no se pudo reproducir el sonido", err);
   }

@@ -1,12 +1,15 @@
 //! Cálculo de la próxima alerta. Todo se guarda en UTC; las ventanas y los días
 //! se evalúan en la zona horaria local que se recibe como parámetro.
+//!
+//! Una franja que cruza la medianoche (22:00–02:00) pertenece al día en que abre: los días
+//! activos se refieren a ese día, y sus horarios de madrugada caen en el día siguiente.
 
-use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 
-use crate::model::{Anchor, ReminderSpec, Schedule, TimeOfDay};
+use crate::model::{Anchor, ReminderSpec, Schedule};
 
-/// Una semana y un día de margen: suficiente para encontrar el siguiente día activo.
-const SEARCH_DAYS: u64 = 8;
+/// Desde ayer (su franja puede seguir abierta) hasta una semana después.
+const SEARCH_DAYS: usize = 9;
 
 /// Próximo momento en que debe sonar `spec`, tomando `now` como referencia.
 ///
@@ -21,24 +24,32 @@ pub fn next_fire<Tz: TimeZone>(spec: &ReminderSpec, now: DateTime<Utc>, tz: &Tz)
     }
 }
 
-/// Horas del día en que suena un recordatorio de horario fijo.
-fn daily_slots(spec: &ReminderSpec) -> Vec<TimeOfDay> {
+/// Minutos desde la medianoche del día activo en que suena un recordatorio de horario fijo,
+/// en orden. Pueden pasar de 1440 si la franja cruza la medianoche.
+fn daily_slots(spec: &ReminderSpec) -> Vec<u32> {
     match &spec.schedule {
         Schedule::Times { times } => {
-            let mut times = times.clone();
+            let mut times: Vec<u32> = times.iter().map(|t| t.minutes()).collect();
             times.sort();
             times.dedup();
             times
         }
         Schedule::Interval { every_min, .. } => {
-            let (start, end) = (spec.window.start.minutes(), spec.window.end.minutes());
-            (start..=end).step_by((*every_min).max(1) as usize).filter_map(TimeOfDay::from_minutes).collect()
+            let (start, end) = (spec.window.start.minutes(), spec.window.end_offset());
+            (start..=end).step_by((*every_min).max(1) as usize).collect()
         }
     }
 }
 
-fn active_days(spec: &ReminderSpec, from: NaiveDate) -> impl Iterator<Item = NaiveDate> + '_ {
-    from.iter_days().take(SEARCH_DAYS as usize).filter(|d| spec.days.contains(d.weekday()))
+/// Días activos desde el anterior a `today`, cuya franja nocturna puede seguir abierta.
+fn active_days(spec: &ReminderSpec, today: NaiveDate) -> impl Iterator<Item = NaiveDate> + '_ {
+    let from = today.pred_opt().unwrap_or(today);
+    from.iter_days().take(SEARCH_DAYS).filter(|d| spec.days.contains(d.weekday()))
+}
+
+/// Hora local `minutes` minutos después de la medianoche de `day`.
+fn at_offset(day: NaiveDate, minutes: u32) -> NaiveDateTime {
+    day.and_time(NaiveTime::MIN) + Duration::minutes(i64::from(minutes))
 }
 
 /// Primer horario estrictamente posterior a `after`.
@@ -46,7 +57,7 @@ fn next_slot_after<Tz: TimeZone>(spec: &ReminderSpec, after: DateTime<Utc>, tz: 
     let slots = daily_slots(spec);
     let today = after.with_timezone(tz).date_naive();
     active_days(spec, today)
-        .flat_map(|day| slots.iter().map(move |slot| day.and_time(slot.to_naive())))
+        .flat_map(|day| slots.iter().map(move |&slot| at_offset(day, slot)))
         .map(|naive| local_to_utc(tz, naive))
         .find(|t| *t > after)
 }
@@ -55,8 +66,8 @@ fn next_slot_after<Tz: TimeZone>(spec: &ReminderSpec, after: DateTime<Utc>, tz: 
 fn fit_into_window<Tz: TimeZone>(spec: &ReminderSpec, candidate: DateTime<Utc>, tz: &Tz) -> Option<DateTime<Utc>> {
     let day = candidate.with_timezone(tz).date_naive();
     active_days(spec, day).find_map(|day| {
-        let start = local_to_utc(tz, day.and_time(spec.window.start.to_naive()));
-        let end = local_to_utc(tz, day.and_time(spec.window.end.to_naive()));
+        let start = local_to_utc(tz, at_offset(day, spec.window.start.minutes()));
+        let end = local_to_utc(tz, at_offset(day, spec.window.end_offset()));
         (candidate <= end).then(|| candidate.max(start))
     })
 }
@@ -80,7 +91,7 @@ mod tests {
     use chrono::FixedOffset;
 
     use super::*;
-    use crate::model::{Days, Window};
+    use crate::model::{Days, TimeOfDay, Window};
 
     /// Ecuador continental: UTC-5, sin horario de verano.
     fn ec() -> FixedOffset {
@@ -105,6 +116,7 @@ mod tests {
             window: Window { start: t("08:00"), end: t("20:00") },
             days: Days::ALL,
             sound: true,
+            tone: "chime".into(),
             nag_min: 5,
             enabled: true,
         }
@@ -168,6 +180,45 @@ mod tests {
         let mut s = spec(every(60, Anchor::Fixed));
         s.days = Days(0);
         assert_eq!(next_fire(&s, at("2026-10-20", "09:00"), &ec()), None);
+    }
+
+    fn overnight(schedule: Schedule) -> ReminderSpec {
+        ReminderSpec { window: Window { start: t("22:00"), end: t("02:00") }, ..spec(schedule) }
+    }
+
+    #[test]
+    fn overnight_window_keeps_firing_after_midnight() {
+        let s = overnight(every(120, Anchor::Fixed));
+        assert_eq!(next_fire(&s, at("2026-10-20", "21:00"), &ec()), Some(at("2026-10-20", "22:00")));
+        assert_eq!(next_fire(&s, at("2026-10-20", "22:00"), &ec()), Some(at("2026-10-21", "00:00")));
+        // El último horario es el cierre (02:00); después espera a la noche.
+        assert_eq!(next_fire(&s, at("2026-10-21", "00:30"), &ec()), Some(at("2026-10-21", "02:00")));
+        assert_eq!(next_fire(&s, at("2026-10-21", "02:00"), &ec()), Some(at("2026-10-21", "22:00")));
+    }
+
+    #[test]
+    fn overnight_window_belongs_to_the_day_it_opens() {
+        let mut s = overnight(every(60, Anchor::Fixed));
+        s.days = Days::WEEKDAYS;
+        // Sábado 24 a la 01:00: sigue abierta la franja del viernes.
+        assert_eq!(next_fire(&s, at("2026-10-24", "00:30"), &ec()), Some(at("2026-10-24", "01:00")));
+        // Sábado por la noche no hay franja: la siguiente es la del lunes 26.
+        assert_eq!(next_fire(&s, at("2026-10-24", "02:00"), &ec()), Some(at("2026-10-26", "22:00")));
+    }
+
+    #[test]
+    fn from_done_inside_overnight_window() {
+        let s = overnight(every(90, Anchor::FromDone));
+        // Hecho a las 23:45 → 01:15, aún dentro de la franja.
+        assert_eq!(next_fire(&s, at("2026-10-20", "23:45"), &ec()), Some(at("2026-10-21", "01:15")));
+        // Hecho a la 01:00 → 02:30 queda fuera: pasa a la noche siguiente.
+        assert_eq!(next_fire(&s, at("2026-10-21", "01:00"), &ec()), Some(at("2026-10-21", "22:00")));
+    }
+
+    #[test]
+    fn previous_day_does_not_leak_into_normal_windows() {
+        let s = spec(every(180, Anchor::FromDone));
+        assert_eq!(next_fire(&s, at("2026-10-21", "01:00"), &ec()), Some(at("2026-10-21", "08:00")));
     }
 
     #[test]

@@ -6,7 +6,8 @@ const container = document.getElementById("alerts");
 async function refresh({ playSound = false } = {}) {
   const alerts = await invoke("pending_alerts");
   container.replaceChildren(...alerts.map(alertCard));
-  if (playSound && alerts.some((a) => a.sound)) chime();
+  const loud = playSound && alerts.find((a) => a.sound);
+  if (loud) playTone(loud.tone);
   container.querySelector("button.primary")?.focus();
 }
 
@@ -32,4 +33,6 @@ function alertCard(a) {
 }
 
 listen("alerts-changed", () => refresh({ playSound: true }));
+// Si se borra o reemplaza un recordatorio pendiente, quitarlo sin volver a sonar.
+listen("reminders-changed", () => refresh());
 refresh({ playSound: true });

@@ -22,13 +22,23 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgwNzBEMjEzOEYwMURERTgKUldUbzNRR1BFOUp3Z0xLemIyTzhFYmQwT2Y0anh4K3FSc2txeUcvNjFOcFBnekRYOUZYUHY4R0cK",
+      "endpoints": ["https://github.com/geomark27/nudge/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
     "shortDescription": "Recordatorios recurrentes de escritorio",
+    "longDescription": "Recordatorios recurrentes locales y sin conexión: gotas, agua, pausas o medicamentos. Vive en la bandeja del sistema y avisa con una ventana siempre encima.",
+    "publisher": "Marcos Ramos",
+    "category": "Productivity",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

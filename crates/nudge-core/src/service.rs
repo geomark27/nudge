@@ -3,7 +3,7 @@
 use chrono::{DateTime, Duration, TimeZone, Utc};
 
 use crate::Error;
-use crate::model::{Action, Alert, Occurrence, Reminder, ReminderSpec, Theme};
+use crate::model::{Action, Alert, Backup, ImportMode, Occurrence, Reminder, ReminderSpec, ReminderStats, Theme};
 use crate::schedule::next_fire;
 use crate::store::Store;
 
@@ -119,6 +119,76 @@ impl<Tz: TimeZone> Service<Tz> {
         self.store.history(limit)
     }
 
+    /// Configuración actual lista para guardarse como respaldo.
+    pub fn export(&self, now: DateTime<Utc>) -> Result<Backup, Error> {
+        Ok(Backup {
+            app: Backup::APP.to_owned(),
+            version: Backup::VERSION,
+            exported_at: now,
+            theme: self.theme()?,
+            reminders: self.store.list()?.into_iter().map(|r| r.spec).collect(),
+        })
+    }
+
+    /// Importa un respaldo y devuelve cuántos recordatorios se crearon. Valida todo antes de
+    /// escribir y lo hace en una transacción: o entra el respaldo completo o nada.
+    pub fn import(&self, backup: Backup, mode: ImportMode, now: DateTime<Utc>) -> Result<usize, Error> {
+        if backup.app != Backup::APP {
+            return Err(Error::Validation("el archivo no es un respaldo de Nudge".into()));
+        }
+        if backup.version > Backup::VERSION {
+            return Err(Error::Validation(format!(
+                "el respaldo es de una versión más nueva de Nudge (formato {})",
+                backup.version
+            )));
+        }
+        for (i, spec) in backup.reminders.iter().enumerate() {
+            spec.validate()
+                .map_err(|e| Error::Validation(format!("recordatorio {} ({:?}): {e}", i + 1, spec.title)))?;
+        }
+        self.store.in_transaction(|store| {
+            if mode == ImportMode::Replace {
+                store.delete_all()?;
+            }
+            for spec in &backup.reminders {
+                store.insert(spec, self.schedule_next(spec, now), now)?;
+            }
+            self.set_theme(backup.theme)
+        })?;
+        Ok(backup.reminders.len())
+    }
+
+    /// Respuestas por recordatorio desde `since`, incluidos los que aún no tienen ninguna.
+    pub fn stats(&self, since: DateTime<Utc>) -> Result<Vec<ReminderStats>, Error> {
+        let actions = self.store.actions_since(since)?;
+        Ok(self
+            .store
+            .list()?
+            .into_iter()
+            .map(|r| {
+                let (mut done, mut snoozed, mut dismissed) = (0u32, 0u32, 0u32);
+                for (_, action) in actions.iter().filter(|(id, _)| *id == r.id) {
+                    match action.as_str() {
+                        "done" => done += 1,
+                        "snoozed" => snoozed += 1,
+                        "dismissed" => dismissed += 1,
+                        _ => {}
+                    }
+                }
+                let answered = done + dismissed;
+                ReminderStats {
+                    reminder_id: r.id,
+                    title: r.spec.title,
+                    done,
+                    snoozed,
+                    dismissed,
+                    compliance_pct: (answered > 0)
+                        .then(|| (f64::from(done) * 100.0 / f64::from(answered)).round() as u8),
+                }
+            })
+            .collect())
+    }
+
     fn schedule_next(&self, spec: &ReminderSpec, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
         if spec.enabled { next_fire(spec, now, &self.tz) } else { None }
     }
@@ -130,6 +200,7 @@ fn alert(r: &Reminder, due_since: DateTime<Utc>, now: DateTime<Utc>) -> Alert {
         title: r.spec.title.clone(),
         message: r.spec.message.clone(),
         sound: r.spec.sound,
+        tone: r.spec.tone.clone(),
         due_since,
         late: now - due_since > LATE_AFTER,
     }
@@ -163,6 +234,7 @@ mod tests {
             window: Window { start: "08:00".parse().unwrap(), end: "20:00".parse().unwrap() },
             days: Days::ALL,
             sound: true,
+            tone: "chime".into(),
             nag_min: 5,
             enabled: true,
         }
@@ -248,6 +320,95 @@ mod tests {
         let alerts = svc.tick(at("11:00")).unwrap();
         assert_eq!(alerts.len(), 1);
         assert_eq!(svc.paused_until(at("11:00")).unwrap(), None);
+    }
+
+    #[test]
+    fn overnight_window_is_valid_but_empty_one_is_not() {
+        let svc = service();
+        let mut spec = drops(Anchor::Fixed);
+        spec.window = Window { start: "22:00".parse().unwrap(), end: "02:00".parse().unwrap() };
+        assert_eq!(svc.create(spec.clone(), at("21:00")).unwrap().next_fire_at, Some(at("22:00")));
+        spec.window.end = spec.window.start;
+        assert!(matches!(svc.create(spec, at("21:00")), Err(Error::Validation(_))));
+    }
+
+    #[test]
+    fn specs_saved_before_tones_default_to_chime() {
+        let old = r#"{"title":"Agua","schedule":{"kind":"times","times":["08:00"]},"days":127,"sound":true}"#;
+        let spec: ReminderSpec = serde_json::from_str(old).unwrap();
+        assert_eq!(spec.tone, "chime");
+        assert!(spec.validate().is_ok());
+    }
+
+    #[test]
+    fn export_then_import_recreates_the_configuration() {
+        let svc = service();
+        svc.create(drops(Anchor::Fixed), at("09:00")).unwrap();
+        svc.set_theme(Theme::Dark).unwrap();
+        let json = serde_json::to_string(&svc.export(at("09:00")).unwrap()).unwrap();
+
+        let other = service();
+        let backup: Backup = serde_json::from_str(&json).unwrap();
+        assert_eq!(other.import(backup, ImportMode::Add, at("09:30")).unwrap(), 1);
+        let list = other.list().unwrap();
+        assert_eq!(list[0].spec, drops(Anchor::Fixed));
+        // El estado se recalcula al importar, no se copia.
+        assert_eq!(list[0].next_fire_at, Some(at("10:00")));
+        assert_eq!(other.theme().unwrap(), Theme::Dark);
+    }
+
+    #[test]
+    fn import_add_keeps_existing_and_replace_removes_them() {
+        let svc = service();
+        let old = svc.create(drops(Anchor::Fixed), at("09:00")).unwrap();
+        svc.tick(at("10:00")).unwrap();
+        svc.act(old.id, Action::Done, at("10:01")).unwrap();
+        let backup = svc.export(at("10:02")).unwrap();
+
+        svc.import(backup.clone(), ImportMode::Add, at("10:03")).unwrap();
+        assert_eq!(svc.list().unwrap().len(), 2);
+
+        svc.import(backup, ImportMode::Replace, at("10:04")).unwrap();
+        let list = svc.list().unwrap();
+        assert_eq!(list.len(), 1);
+        assert!(svc.history(10).unwrap().is_empty());
+    }
+
+    #[test]
+    fn invalid_backup_changes_nothing() {
+        let svc = service();
+        svc.create(drops(Anchor::Fixed), at("09:00")).unwrap();
+        let mut backup = svc.export(at("09:00")).unwrap();
+        let mut bad = drops(Anchor::Fixed);
+        bad.title = String::new();
+        backup.reminders.push(bad);
+        assert!(svc.import(backup.clone(), ImportMode::Replace, at("09:01")).is_err());
+        assert_eq!(svc.list().unwrap().len(), 1);
+
+        backup.reminders.pop();
+        backup.app = "otra-app".into();
+        assert!(svc.import(backup, ImportMode::Add, at("09:01")).is_err());
+        assert_eq!(svc.list().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn stats_count_answers_and_compute_compliance() {
+        let svc = service();
+        let r = svc.create(drops(Anchor::Fixed), at("07:00")).unwrap();
+        let quiet = svc.create(ReminderSpec { title: "Agua".into(), ..drops(Anchor::Fixed) }, at("07:00")).unwrap();
+        svc.act(r.id, Action::Done, at("08:00")).unwrap();
+        svc.act(r.id, Action::Snooze { minutes: 5 }, at("10:00")).unwrap();
+        svc.act(r.id, Action::Done, at("10:05")).unwrap();
+        svc.act(r.id, Action::Done, at("12:00")).unwrap();
+        svc.act(r.id, Action::Dismiss, at("14:00")).unwrap();
+
+        let stats = svc.stats(at("09:00")).unwrap();
+        let mine = stats.iter().find(|s| s.reminder_id == r.id).unwrap();
+        // La de las 08:00 queda fuera del periodo.
+        assert_eq!((mine.done, mine.snoozed, mine.dismissed), (2, 1, 1));
+        assert_eq!(mine.compliance_pct, Some(67));
+        let other = stats.iter().find(|s| s.reminder_id == quiet.id).unwrap();
+        assert_eq!(other.compliance_pct, None);
     }
 
     #[test]

@@ -28,6 +28,14 @@
     </label>
   </header>
 
+  <div id="update-banner" class="banner hidden" role="status">
+    <div class="banner-body">
+      <strong id="update-text"></strong>
+      <details id="update-notes-box"><summary>Novedades</summary><pre id="update-notes"></pre></details>
+    </div>
+    <button id="update-install" class="primary">Actualizar ahora</button>
+  </div>
+
   <main>
     <section>
       <h2>Recordatorios <button id="new" class="primary">+ Nuevo</button></h2>
@@ -35,10 +43,48 @@
     </section>
 
     <section>
+      <h2>Cumplimiento
+        <select id="stats-days" aria-label="Periodo">
+          <option value="7" selected>Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+        </select>
+      </h2>
+      <div id="stats" class="list"></div>
+    </section>
+
+    <section>
       <h2>Historial reciente</h2>
       <table class="history"><tbody id="history"></tbody></table>
     </section>
+
+    <section>
+      <h2>Mis sonidos <button id="add-sound">+ Agregar sonido…</button></h2>
+      <div id="sounds" class="list"></div>
+      <p class="hint muted">MP3, WAV, OGG o M4A de hasta 10 MB. Se copian a la carpeta de datos de Nudge.</p>
+    </section>
+
+    <section>
+      <h2>Respaldo</h2>
+      <div class="backup">
+        <button id="export">Exportar configuración…</button>
+        <button id="import-add">Importar y añadir…</button>
+        <button id="import-replace" class="danger">Importar y reemplazar…</button>
+      </div>
+      <p class="hint muted">Guarda tus recordatorios y el tema en un JSON. No incluye el historial ni los archivos
+        de sonido: si un recordatorio usa un sonido propio que no está, suena la campanita.</p>
+    </section>
+
+    <section>
+      <h2>Acerca de</h2>
+      <div class="about">
+        <span id="version" class="muted"></span>
+        <button id="update-check">Buscar actualizaciones</button>
+        <span id="update-status" class="muted" role="status"></span>
+      </div>
+    </section>
   </main>
+
+  <div id="toast" class="toast hidden" role="status"></div>
 
   <dialog id="editor">
     <form id="form" method="dialog" novalidate>
@@ -93,6 +139,8 @@
           <label for="end">Hasta</label>
           <input type="time" id="end" value="20:00">
         </div>
+        <small class="hint muted hidden" id="window-hint">Termina al día siguiente: la franja cruza la medianoche
+          y cuenta para el día en que empieza.</small>
       </div>
 
       <div class="field">
@@ -112,11 +160,15 @@
           </select>
         </div>
         <div class="field">
-          <span class="label">Opciones</span>
-          <label class="inline"><input type="checkbox" id="sound" checked> Sonido</label>
-          <label class="inline"><input type="checkbox" id="enabled" checked> Activo</label>
+          <label for="tone">Sonido</label>
+          <div class="tone-picker">
+            <select id="tone"></select>
+            <button type="button" id="tone-test" title="Escuchar el sonido elegido">▶ Probar</button>
+          </div>
         </div>
       </div>
+
+      <label class="inline"><input type="checkbox" id="enabled" checked> Activo</label>
 
       <div class="error" id="form-error" role="alert"></div>
       <div class="form-actions">

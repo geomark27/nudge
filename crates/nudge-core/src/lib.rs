@@ -4,9 +4,13 @@
 pub mod model;
 pub mod schedule;
 pub mod service;
+pub mod sound;
 pub mod store;
 
-pub use model::{Action, Alert, Anchor, Days, Occurrence, Reminder, ReminderSpec, Schedule, Theme, TimeOfDay, Window};
+pub use model::{
+    Action, Alert, Anchor, Backup, Days, ImportMode, Occurrence, Reminder, ReminderSpec, ReminderStats, Schedule,
+    Theme, TimeOfDay, Window,
+};
 pub use service::Service;
 pub use store::Store;
 

@@ -184,6 +184,75 @@ table.history td:last-child { text-align: right; color: var(--muted); }
 .tag.done { color: var(--ok); }
 .tag.snoozed { color: var(--warn); }
 
+section h2 select { width: auto; padding: 3px 8px; font-size: 12px; text-transform: none; letter-spacing: 0; }
+.hint { font-size: 12px; margin: 8px 0 0; }
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: grid;
+  gap: 6px;
+}
+.stat-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.stat-pct { font-weight: 700; color: var(--muted); font-size: 13px; }
+.stat-pct.good { color: var(--ok); }
+.stat-pct.fair { color: var(--accent); }
+.stat-pct.low { color: var(--warn); }
+.stat .meta { font-size: 12px; color: var(--muted); }
+.bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: inherit; background: var(--muted); transition: width 0.3s; }
+.bar.good span { background: var(--ok); }
+.bar.fair span { background: var(--accent); }
+.bar.low span { background: var(--warn); }
+
+.card.sound { grid-template-columns: 1fr auto; padding: 10px 16px; }
+.card.sound h3 { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+
+.backup { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  max-width: min(420px, calc(100vw - 40px));
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+  overflow-wrap: anywhere;
+  z-index: 10;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 860px;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.banner-body { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.banner summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+.banner pre {
+  margin: 6px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.banner button { flex: none; }
+.about { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+@media (max-width: 900px) { .banner { margin: 16px 20px 0; } }
+
 /* ---------- Formulario ---------- */
 
 dialog {
@@ -201,6 +270,10 @@ dialog h2 { margin: 0; font-size: 17px; }
 .field { display: grid; gap: 6px; }
 .field > label, .field > .label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row .hint { grid-column: 1 / -1; margin: 0; }
+.tone-picker { display: flex; gap: 6px; }
+.tone-picker select { flex: 1; min-width: 0; }
+.tone-picker button { flex: none; }
 .segmented { display: grid; gap: 6px; }
 .segmented label {
   display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px;

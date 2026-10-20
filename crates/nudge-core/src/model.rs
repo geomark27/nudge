@@ -102,10 +102,22 @@ pub enum Schedule {
 }
 
 /// Franja horaria en la que un recordatorio puede sonar (ambos extremos incluidos).
+/// Si `end < start` cruza la medianoche (22:00–02:00) y pertenece al día en que abre.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Window {
     pub start: TimeOfDay,
     pub end: TimeOfDay,
+}
+
+impl Window {
+    pub fn crosses_midnight(self) -> bool {
+        self.end < self.start
+    }
+
+    /// Minutos desde la medianoche del día de apertura hasta el cierre (puede pasar de 1440).
+    pub fn end_offset(self) -> u32 {
+        self.end.minutes() + if self.crosses_midnight() { 24 * 60 } else { 0 }
+    }
 }
 
 impl Default for Window {
@@ -126,6 +138,9 @@ pub struct ReminderSpec {
     pub days: Days,
     #[serde(default = "default_true")]
     pub sound: bool,
+    /// Tono integrado (`chime`, `soft`…) o archivo propio (`file:nombre.mp3`).
+    #[serde(default = "default_tone")]
+    pub tone: String,
     /// Minutos para volver a avisar si no se responde; 0 = no insistir.
     #[serde(default = "default_nag")]
     pub nag_min: u32,
@@ -141,6 +156,10 @@ fn default_nag() -> u32 {
     5
 }
 
+fn default_tone() -> String {
+    crate::sound::DEFAULT_TONE.to_owned()
+}
+
 impl ReminderSpec {
     pub fn validate(&self) -> Result<(), Error> {
         let fail = |msg: &str| Err(Error::Validation(msg.to_owned()));
@@ -150,9 +169,10 @@ impl ReminderSpec {
         if self.days.is_empty() {
             return fail("selecciona al menos un día");
         }
-        if self.window.start >= self.window.end {
-            return fail("la hora de inicio debe ser anterior a la de fin");
+        if self.window.start == self.window.end {
+            return fail("la hora de inicio y la de fin no pueden ser iguales");
         }
+        crate::sound::validate_tone(&self.tone)?;
         match &self.schedule {
             Schedule::Interval { every_min, .. } if *every_min == 0 => {
                 fail("el intervalo debe ser de al menos 1 minuto")
@@ -230,6 +250,7 @@ pub struct Alert {
     pub title: String,
     pub message: String,
     pub sound: bool,
+    pub tone: String,
     pub due_since: DateTime<Utc>,
     /// Llegó con retraso (equipo suspendido, apagado o pausa): mostrar "pendiente desde…".
     pub late: bool,
@@ -243,4 +264,43 @@ pub struct Occurrence {
     pub due_at: DateTime<Utc>,
     pub action: String,
     pub acted_at: DateTime<Utc>,
+}
+
+/// Archivo de respaldo: la configuración sin estado ni historial.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Backup {
+    /// Siempre `"nudge"`; evita importar por error otro JSON.
+    pub app: String,
+    pub version: u32,
+    pub exported_at: DateTime<Utc>,
+    #[serde(default)]
+    pub theme: Theme,
+    pub reminders: Vec<ReminderSpec>,
+}
+
+impl Backup {
+    pub const APP: &'static str = "nudge";
+    pub const VERSION: u32 = 1;
+}
+
+/// Qué hacer con los recordatorios actuales al importar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ImportMode {
+    /// Se suman a los que ya hay.
+    Add,
+    /// Se borran los actuales (y su historial) antes de importar.
+    Replace,
+}
+
+/// Respuestas a un recordatorio en un periodo.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ReminderStats {
+    pub reminder_id: i64,
+    pub title: String,
+    pub done: u32,
+    pub snoozed: u32,
+    pub dismissed: u32,
+    /// Hechas sobre respuestas finales (hechas + descartadas); `None` si aún no hay ninguna.
+    pub compliance_pct: Option<u8>,
 }

@@ -102,6 +102,20 @@ impl Store {
         found(n, id)
     }
 
+    /// Borra todos los recordatorios; su historial se va en cascada.
+    pub fn delete_all(&self) -> Result<(), Error> {
+        self.conn.execute("DELETE FROM reminders", [])?;
+        Ok(())
+    }
+
+    /// Ejecuta `f` en una transacción: si devuelve error, no queda nada a medias.
+    pub fn in_transaction<T>(&self, f: impl FnOnce(&Self) -> Result<T, Error>) -> Result<T, Error> {
+        let tx = self.conn.unchecked_transaction()?;
+        let value = f(self)?;
+        tx.commit()?;
+        Ok(value)
+    }
+
     pub fn get(&self, id: i64) -> Result<Reminder, Error> {
         self.conn
             .query_row(&format!("{SELECT_REMINDER} WHERE id = ?1"), [id], reminder_row)
@@ -152,6 +166,13 @@ impl Store {
             })
         })
         .collect()
+    }
+
+    /// `(reminder_id, action)` de las respuestas dadas desde `since`.
+    pub fn actions_since(&self, since: DateTime<Utc>) -> Result<Vec<(i64, String)>, Error> {
+        let mut stmt = self.conn.prepare("SELECT reminder_id, action FROM occurrences WHERE acted_at >= ?1")?;
+        let rows = stmt.query_map([since.timestamp()], |row| Ok((row.get(0)?, row.get(1)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
     pub fn get_setting(&self, key: &str) -> Result<Option<String>, Error> {

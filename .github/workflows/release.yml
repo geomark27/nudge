@@ -1,0 +1,105 @@
+# Compila y firma los instaladores al subir un tag vX.Y.Z (lo hace `make release`), los adjunta al
+# release junto con latest.json (para el actualizador) y lo publica cuando los tres sistemas
+# terminaron bien. Si algo falla, el release queda en borrador y se puede relanzar el workflow
+# desde la pestaña Actions.
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+  TAG: ${{ github.ref_name }}
+
+jobs:
+  prepare:
+    name: Preparar release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: La versión del tag coincide con la de la app
+        run: |
+          app=$(sed -n 's/^  "version": "\(.*\)",$/\1/p' src-tauri/tauri.conf.json)
+          [[ "v$app" == "$TAG" ]] || { echo "::error::tauri.conf.json dice $app y el tag es $TAG"; exit 1; }
+      - name: La llave pública del actualizador está configurada
+        run: |
+          ! grep -q '"pubkey": "PENDIENTE' src-tauri/tauri.conf.json \
+            || { echo "::error::falta la llave del actualizador: ejecuta 'make updater-key'"; exit 1; }
+      - name: Crear el release en borrador si aún no existe
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 && exit 0
+          bash scripts/changelog-notes.sh "${TAG#v}" | gh release create "$TAG" --draft --verify-tag \
+            --title "Nudge $TAG" --notes-file -
+
+  build:
+    name: Instaladores (${{ matrix.name }})
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            args: ""
+          # 22.04 en lugar de la última: el .deb y el AppImage sirven en más distribuciones (glibc).
+          - name: Linux
+            os: ubuntu-22.04
+            args: ""
+          - name: macOS
+            os: macos-latest
+            args: --target universal-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependencias de Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev libssl-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      # La CLI de Tauri por npx trae binarios precompilados (cargo install tardaría ~10 min).
+      # Solo se usa aquí; la UI sigue sin npm. tauri.release.conf.json activa las firmas .sig
+      # del actualizador, hechas con la llave privada guardada como secreto (make updater-key).
+      - name: Compilar y firmar
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: npx --yes @tauri-apps/cli@2 build --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
+
+      - name: Subir al release
+        shell: bash
+        run: |
+          files=()
+          while IFS= read -r f; do files+=("$f"); done < <(find target -type f -path '*/release/bundle/*' \
+            -not -path '*.app/*' -not -path '*.AppDir/*' \
+            \( -name '*.msi' -o -name '*-setup.exe' -o -name '*.deb' -o -name '*.rpm' \
+               -o -name '*.AppImage' -o -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.sig' \))
+          [[ ${#files[@]} -gt 0 ]] || { echo "::error::no se generó ningún instalador"; exit 1; }
+          printf '  %s\n' "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber
+
+  publish:
+    name: Publicar
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # latest.json es lo que consultan las apps instaladas para saber si hay versión nueva.
+      - name: Generar el manifiesto del actualizador
+        run: bash scripts/updater-manifest.sh "$TAG"
+      - name: Publicar el release
+        run: gh release edit "$TAG" --draft=false --latest
