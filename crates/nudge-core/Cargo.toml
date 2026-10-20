@@ -1,0 +1,16 @@
+[package]
+name = "nudge-core"
+description = "Núcleo de Nudge: modelo, planificador y persistencia, sin dependencias de UI."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde", "std"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+
+[dev-dependencies]
+chrono-tz = "0.10.4"

@@ -1,0 +1,7 @@
+/target
+/src-tauri/target
+/src-tauri/gen
+*.db
+*.db-shm
+*.db-wal
+CLAUDE.local.md

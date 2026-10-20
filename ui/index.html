@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nudge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Nudge</h1>
+    <span id="status" class="pill">Activo</span>
+    <div class="spacer"></div>
+    <button id="pause-30" title="Silenciar todas las alertas">Pausar 30 min</button>
+    <button id="pause-60">Pausar 1 h</button>
+    <button id="resume" class="hidden">Reanudar</button>
+    <label class="inline" title="Apariencia de Nudge">
+      Tema
+      <select id="theme">
+        <option value="system">Sistema</option>
+        <option value="light">Claro</option>
+        <option value="dark">Oscuro</option>
+      </select>
+    </label>
+    <label class="inline" title="Abrir Nudge al iniciar sesión">
+      <span class="switch"><input type="checkbox" id="autostart"><span></span></span>
+      Iniciar con el sistema
+    </label>
+  </header>
+
+  <main>
+    <section>
+      <h2>Recordatorios <button id="new" class="primary">+ Nuevo</button></h2>
+      <div id="reminders" class="list"></div>
+    </section>
+
+    <section>
+      <h2>Historial reciente</h2>
+      <table class="history"><tbody id="history"></tbody></table>
+    </section>
+  </main>
+
+  <dialog id="editor">
+    <form id="form" method="dialog" novalidate>
+      <h2 id="form-title">Nuevo recordatorio</h2>
+
+      <div class="field">
+        <label for="title">Título</label>
+        <input type="text" id="title" maxlength="80" placeholder="Gotas para los ojos" required>
+      </div>
+      <div class="field">
+        <label for="message">Mensaje (opcional)</label>
+        <textarea id="message" maxlength="300" placeholder="Una gota en cada ojo"></textarea>
+      </div>
+
+      <div class="field">
+        <span class="label">¿Cuándo?</span>
+        <div class="segmented">
+          <label><input type="radio" name="mode" value="fixed" checked>
+            <span>Cada cierto tiempo, en horario fijo<small>08:00, 10:00, 12:00… desde el inicio de la franja</small></span></label>
+          <label><input type="radio" name="mode" value="from_done">
+            <span>Cada cierto tiempo desde que lo marco hecho<small>Hecho a las 10:15 → siguiente a las 13:15</small></span></label>
+          <label><input type="radio" name="mode" value="times">
+            <span>A horas exactas<small>Por ejemplo 08:00, 14:00 y 21:00</small></span></label>
+        </div>
+      </div>
+
+      <div class="row" id="interval-fields">
+        <div class="field">
+          <label for="every">Repetir cada</label>
+          <input type="number" id="every" min="1" value="2">
+        </div>
+        <div class="field">
+          <label for="unit">Unidad</label>
+          <select id="unit">
+            <option value="1">minutos</option>
+            <option value="60" selected>horas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field hidden" id="times-field">
+        <label for="times">Horas (separadas por coma)</label>
+        <input type="text" id="times" placeholder="08:00, 14:00, 21:00">
+      </div>
+
+      <div class="row" id="window-fields">
+        <div class="field">
+          <label for="start">Desde</label>
+          <input type="time" id="start" value="08:00">
+        </div>
+        <div class="field">
+          <label for="end">Hasta</label>
+          <input type="time" id="end" value="20:00">
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label">Días</span>
+        <div class="days" id="days"></div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="nag">Si no respondo, insistir</label>
+          <select id="nag">
+            <option value="0">No insistir</option>
+            <option value="2">Cada 2 min</option>
+            <option value="5" selected>Cada 5 min</option>
+            <option value="10">Cada 10 min</option>
+            <option value="15">Cada 15 min</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="label">Opciones</span>
+          <label class="inline"><input type="checkbox" id="sound" checked> Sonido</label>
+          <label class="inline"><input type="checkbox" id="enabled" checked> Activo</label>
+        </div>
+      </div>
+
+      <div class="error" id="form-error" role="alert"></div>
+      <div class="form-actions">
+        <button type="button" id="cancel">Cancelar</button>
+        <button type="submit" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="common.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
