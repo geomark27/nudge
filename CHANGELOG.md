@@ -10,6 +10,8 @@ notas del release en GitHub.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-20
+
 ### Añadido
 
 - Recordatorios recurrentes con tres tipos de horario: cada cierto tiempo en horario fijo, cada cierto
@@ -33,4 +35,5 @@ notas del release en GitHub.
 - Actualización automática: Nudge busca versiones nuevas al abrir y cada 6 horas, avisa y se
   actualiza con un clic verificando la firma del paquete.
 
-[Unreleased]: https://github.com/geomark27/nudge/commits/main
+[Unreleased]: https://github.com/geomark27/nudge/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/geomark27/nudge/releases/tag/v0.1.0
