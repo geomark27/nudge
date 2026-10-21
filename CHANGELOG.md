@@ -10,6 +10,8 @@ notas del release en GitHub.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-21
+
 ### Cambiado
 
 - Un instalador por sistema, con nombre fijo para enlazar siempre a la última versión:
@@ -50,5 +52,6 @@ notas del release en GitHub.
 - Actualización automática: Nudge busca versiones nuevas al abrir y cada 6 horas, avisa y se
   actualiza con un clic verificando la firma del paquete.
 
-[Unreleased]: https://github.com/geomark27/nudge/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/geomark27/nudge/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/geomark27/nudge/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/geomark27/nudge/releases/tag/v0.1.0

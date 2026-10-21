@@ -2309,7 +2309,7 @@ dependencies = [
 
 [[package]]
 name = "nudge"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "gtk",
@@ -2327,7 +2327,7 @@ dependencies = [
 
 [[package]]
 name = "nudge-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "chrono-tz",
