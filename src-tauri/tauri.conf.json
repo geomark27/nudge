@@ -34,7 +34,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "deb", "app", "dmg"],
     "shortDescription": "Recordatorios recurrentes de escritorio",
     "longDescription": "Recordatorios recurrentes locales y sin conexión: gotas, agua, pausas o medicamentos. Vive en la bandeja del sistema y avisa con una ventana siempre encima.",
     "publisher": "Marcos Ramos",

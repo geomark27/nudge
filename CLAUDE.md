@@ -39,7 +39,7 @@ scripts/release.sh    `make release VERSION=x.y.z`: versión + CHANGELOG + commi
 scripts/changelog-notes.sh  Extrae una sección de CHANGELOG.md (notas del release; también lo usa el CI)
 scripts/install.ps1, install.sh  Instaladores de una línea (último release o NUDGE_VERSION)
 scripts/updater-key.sh  `make updater-key`: llave de firma de actualizaciones (una sola vez)
-scripts/updater-manifest.sh  CI: genera latest.json desde las firmas .sig del release
+scripts/updater-manifest.sh  CI: genera latest.json desde las firmas .sig (artefactos del workflow, no del release)
 .github/workflows/    ci.yml (`make check` en push/PR) y release.yml (instaladores de los 3 SO al subir un tag)
 ```
 
@@ -88,6 +88,9 @@ cargo tauri build
 
 Releases: anota cada cambio en `[Unreleased]` de `CHANGELOG.md` **en el mismo commit**. Publicar es
 `make release VERSION=x.y.z` (`DRY_RUN=1` simula); el tag dispara el CI que sube los instaladores.
+Un instalador por SO con **nombre fijo** (`Nudge-windows-x64-setup.exe`, `Nudge-linux-amd64.deb`,
+`Nudge-macos-universal.dmg`; más `Nudge-macos-universal.app.tar.gz` y `latest.json` para el actualizador):
+el README enlaza `releases/latest/download/<nombre>`, así que no los renombres.
 La versión vive en `Cargo.toml` (`[workspace.package]`) y `src-tauri/tauri.conf.json`: deben coincidir.
 
 Actualizador: `tauri-plugin-updater` lee `releases/latest/download/latest.json`. Las firmas `.sig` solo

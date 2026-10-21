@@ -5,7 +5,7 @@
 #  Version:  curl -fsSL ... | NUDGE_VERSION=v0.1.0 bash
 #  Sirve tambien para actualizar: reemplaza la version instalada y conserva tus datos.
 #
-#  Linux: .deb (apt), .rpm (dnf/zypper) o AppImage en ~/.local/bin si no hay ninguno.
+#  Linux: .deb con apt (Ubuntu, Debian, Mint, Pop!_OS...). Otras distribuciones no tienen instalador.
 #  macOS: copia Nudge.app a /Applications (o ~/Applications si no hay permiso).
 # ================================================================
 
@@ -22,7 +22,7 @@ ARCH=$(uname -m)
 
 echo ""
 echo "  Nudge - Instalador"
-echo "  ────────────────────────────────────"
+echo "  ------------------------------------"
 echo ""
 
 # 1. Buscar la version (la ultima, o la indicada en NUDGE_VERSION)
@@ -32,7 +32,9 @@ if [ -n "${NUDGE_VERSION:-}" ]; then
 else
   API="https://api.github.com/repos/$REPO/releases/latest"
 fi
-RELEASE=$(curl -fsSL "$API") || die "no se encontro el release (${NUDGE_VERSION:-latest})"
+# --retry: la red puede cortarse; un 404 (sin --retry-all-errors) significa que no hay release.
+RELEASE=$(curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 60 "$API") \
+  || die "no hay una version publicada (${NUDGE_VERSION:-latest}) o no hubo conexion; revisa https://github.com/$REPO/releases"
 VERSION=$(printf '%s' "$RELEASE" | grep -m1 '"tag_name"' | cut -d'"' -f4)
 echo "      version: $VERSION"
 
@@ -45,13 +47,10 @@ asset_url() {
 case "$OS" in
   Linux)
     [ "$ARCH" = "x86_64" ] || die "por ahora solo hay version para Linux x86_64 (tienes $ARCH)"
-    if command -v apt-get >/dev/null && command -v dpkg >/dev/null; then
-      KIND=deb; PATTERN='_amd64\.deb$'
-    elif command -v dnf >/dev/null || command -v zypper >/dev/null; then
-      KIND=rpm; PATTERN='\.x86_64\.rpm$'
-    else
-      KIND=appimage; PATTERN='_amd64\.AppImage$'
-    fi
+    command -v apt-get >/dev/null && command -v dpkg >/dev/null \
+      || die "solo hay instalador .deb (Ubuntu, Debian, Mint...); tu distribucion no usa apt"
+    # Nudge-linux-amd64.deb (hasta v0.1.0: Nudge_<version>_amd64.deb)
+    KIND=deb; PATTERN='amd64\.deb$'
     ;;
   Darwin)
     KIND=dmg; PATTERN='\.dmg$'
@@ -67,7 +66,7 @@ FILE="$TMP/$(basename "$URL")"
 
 # 2. Descargar
 echo "[2/4] Descargando $(basename "$URL")..."
-curl -fsSL "$URL" -o "$FILE"
+curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 "$URL" -o "$FILE"
 echo "      descargado"
 
 # 3. Instalar (cerrando antes la version que este abierta)
@@ -78,29 +77,6 @@ case "$KIND" in
     sudo apt-get install -y "$FILE" >/dev/null
     LAUNCH="nudge"
     WHERE="/usr/bin/nudge"
-    ;;
-  rpm)
-    if command -v dnf >/dev/null; then
-      sudo dnf install -y "$FILE" >/dev/null
-    else
-      sudo zypper --non-interactive install --allow-unsigned-rpm "$FILE" >/dev/null
-    fi
-    LAUNCH="nudge"
-    WHERE="/usr/bin/nudge"
-    ;;
-  appimage)
-    mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
-    install -m 755 "$FILE" "$HOME/.local/bin/nudge"
-    cat > "$HOME/.local/share/applications/nudge.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Nudge
-Comment=Recordatorios recurrentes de escritorio
-Exec=$HOME/.local/bin/nudge
-Categories=Utility;
-EOF
-    LAUNCH="$HOME/.local/bin/nudge"
-    WHERE="$LAUNCH (AppImage; si no abre, instala libfuse2)"
     ;;
   dmg)
     MNT="$TMP/mnt"

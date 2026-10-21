@@ -12,9 +12,26 @@ $ProgressPreference = "SilentlyContinue"   # sin barra de progreso, Invoke-WebRe
 $repo       = "geomark27/nudge"
 $installDir = "$env:LOCALAPPDATA\Nudge"
 
+# Reintenta ante cortes de red; un 404 significa que esa version no esta publicada.
+function Get-Release($url) {
+    for ($try = 1; $try -le 3; $try++) {
+        try {
+            return Invoke-RestMethod $url -TimeoutSec 30
+        } catch {
+            $code = $_.Exception.Response.StatusCode.value__
+            if ($code -eq 404) {
+                throw "No hay una version publicada ($(if ($env:NUDGE_VERSION) { $env:NUDGE_VERSION } else { 'latest' })). Revisa https://github.com/$repo/releases"
+            }
+            if ($try -eq 3) { throw "No se pudo conectar con GitHub: $($_.Exception.Message)" }
+            Write-Host "      sin respuesta de GitHub, reintentando ($try/3)..." -ForegroundColor DarkYellow
+            Start-Sleep -Seconds (2 * $try)
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "  Nudge - Instalador" -ForegroundColor Cyan
-Write-Host "  ────────────────────────────────────" -ForegroundColor Cyan
+Write-Host "  ------------------------------------" -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Buscar la version (la ultima, o la indicada en NUDGE_VERSION)
@@ -24,16 +41,17 @@ if ($env:NUDGE_VERSION) {
 } else {
     $api = "https://api.github.com/repos/$repo/releases/latest"
 }
-$release = Invoke-RestMethod $api
+$release = Get-Release $api
 $version = $release.tag_name
-$asset   = $release.assets | Where-Object { $_.name -like "*_x64-setup.exe" } | Select-Object -First 1
+# Nudge-windows-x64-setup.exe (hasta v0.1.0: Nudge_<version>_x64-setup.exe)
+$asset   = $release.assets | Where-Object { $_.name -like "*x64-setup.exe" } | Select-Object -First 1
 if (-not $asset) { throw "El release $version no tiene instalador para Windows." }
 Write-Host "      version: $version" -ForegroundColor Green
 
 # 2. Descargar el instalador
 Write-Host "[2/4] Descargando $($asset.name)..." -ForegroundColor Yellow
 $installer = Join-Path $env:TEMP $asset.name
-Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installer
+Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installer -TimeoutSec 300
 Write-Host "      descargado en $installer" -ForegroundColor Green
 
 # 3. Instalar en silencio (por usuario, sin permisos de administrador)

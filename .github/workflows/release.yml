@@ -46,7 +46,7 @@ jobs:
           - name: Windows
             os: windows-latest
             args: ""
-          # 22.04 en lugar de la última: el .deb y el AppImage sirven en más distribuciones (glibc).
+          # 22.04 en lugar de la última: el .deb sirve en más versiones de Ubuntu/Debian (glibc).
           - name: Linux
             os: ubuntu-22.04
             args: ""
@@ -80,17 +80,35 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: npx --yes @tauri-apps/cli@2 build --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
 
+      # Un instalador por sistema y con nombre fijo, así releases/latest/download/<nombre> siempre
+      # apunta a la última versión. Las firmas .sig no van al release: solo las usa latest.json.
       - name: Subir al release
         shell: bash
         run: |
-          files=()
-          while IFS= read -r f; do files+=("$f"); done < <(find target -type f -path '*/release/bundle/*' \
-            -not -path '*.app/*' -not -path '*.AppDir/*' \
-            \( -name '*.msi' -o -name '*-setup.exe' -o -name '*.deb' -o -name '*.rpm' \
-               -o -name '*.AppImage' -o -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.sig' \))
-          [[ ${#files[@]} -gt 0 ]] || { echo "::error::no se generó ningún instalador"; exit 1; }
-          printf '  %s\n' "${files[@]}"
-          gh release upload "$TAG" "${files[@]}" --clobber
+          mkdir -p dist sigs
+          # put <patrón> <nombre fijo>: copia el archivo generado (y su firma, si la tiene).
+          put() {
+            local f
+            f=$(find target -type f -path '*/release/bundle/*' -name "$1" | head -1)
+            [[ -n $f ]] || { echo "::error::no se generó $1"; exit 1; }
+            cp "$f" "dist/$2"
+            [[ ! -f $f.sig ]] || cp "$f.sig" "sigs/$2.sig"
+          }
+          case $RUNNER_OS in
+            Windows) put 'Nudge_*-setup.exe' Nudge-windows-x64-setup.exe ;;
+            Linux) put 'Nudge_*.deb' Nudge-linux-amd64.deb ;;
+            # El .app.tar.gz no es para descargar: es el paquete que usa el actualizador en macOS.
+            macOS) put 'Nudge_*.dmg' Nudge-macos-universal.dmg
+                   put 'Nudge.app.tar.gz' Nudge-macos-universal.app.tar.gz ;;
+          esac
+          ls -l dist sigs
+          gh release upload "$TAG" dist/* --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sigs-${{ matrix.name }}
+          path: sigs/
+          overwrite: true
 
   publish:
     name: Publicar
@@ -98,8 +116,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sigs-*
+          merge-multiple: true
+          path: sigs
       # latest.json es lo que consultan las apps instaladas para saber si hay versión nueva.
       - name: Generar el manifiesto del actualizador
-        run: bash scripts/updater-manifest.sh "$TAG"
+        run: bash scripts/updater-manifest.sh "$TAG" sigs
       - name: Publicar el release
         run: gh release edit "$TAG" --draft=false --latest

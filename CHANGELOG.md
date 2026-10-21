@@ -10,6 +10,21 @@ notas del release en GitHub.
 
 ## [Unreleased]
 
+### Cambiado
+
+- Un instalador por sistema, con nombre fijo para enlazar siempre a la última versión:
+  `Nudge-windows-x64-setup.exe`, `Nudge-linux-amd64.deb` y `Nudge-macos-universal.dmg`. Las firmas
+  del actualizador ya no aparecen como descargas del release.
+
+### Eliminado
+
+- Instaladores MSI, RPM y AppImage. En Linux solo hay `.deb` (distribuciones con apt).
+
+### Corregido
+
+- Instaladores de una línea: reintentan ante cortes de red, tienen tiempo límite, avisan con claridad
+  si aún no hay versión publicada y ya no muestran `????` en Windows PowerShell 5.1.
+
 ## [0.1.0] - 2026-10-20
 
 ### Añadido

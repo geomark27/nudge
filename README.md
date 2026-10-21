@@ -68,10 +68,22 @@ El `Makefile` agrupa los comandos (`make` muestra la lista; `make check` = forma
 ```sh
 cargo test -p nudge-core      # pruebas del núcleo (no requiere GTK ni WebView)
 cargo tauri dev               # ejecuta la app con recarga
-cargo tauri build             # instaladores: MSI/NSIS, DEB/RPM/AppImage, DMG
+cargo tauri build             # instalador del sistema actual: NSIS (.exe), .deb o .dmg
 ```
 
 ## Instalación
+
+Hay un instalador por sistema. Estos enlaces descargan siempre la última versión:
+
+| Sistema | Instalador | Por terminal |
+|---|---|---|
+| Windows 10/11 (x64) | [`Nudge-windows-x64-setup.exe`](https://github.com/geomark27/nudge/releases/latest/download/Nudge-windows-x64-setup.exe) | Sí (PowerShell) |
+| Linux x64 con apt: Ubuntu, Debian, Mint, Pop!_OS… | [`Nudge-linux-amd64.deb`](https://github.com/geomark27/nudge/releases/latest/download/Nudge-linux-amd64.deb) | Sí (pide `sudo`) |
+| macOS (Intel y Apple Silicon) | [`Nudge-macos-universal.dmg`](https://github.com/geomark27/nudge/releases/latest/download/Nudge-macos-universal.dmg) | Sí |
+
+Otras distribuciones de Linux (Fedora, Arch, openSUSE…) no tienen instalador por ahora.
+
+### Por terminal
 
 **Windows** (PowerShell):
 
@@ -91,17 +103,24 @@ versión concreta: `$env:NUDGE_VERSION = "v0.1.0"` antes del comando en Windows,
 `… | NUDGE_VERSION=v0.1.0 bash` en Linux/macOS.
 
 - **Windows**: instalación por usuario en `%LOCALAPPDATA%\Nudge`, sin permisos de administrador.
-- **Linux**: `.deb` con apt, `.rpm` con dnf/zypper (pide `sudo`) o, si no hay ninguno, AppImage en
-  `~/.local/bin/nudge` (requiere `libfuse2`).
+- **Linux**: instala el `.deb` con apt (pide `sudo`). En otras distribuciones avisa que no hay
+  instalador y no hace nada.
 - **macOS**: copia `Nudge.app` a `/Applications` (Intel y Apple Silicon).
+
+### Con el instalador descargado
+
+- **Windows**: doble clic en el `.exe`. Instala por usuario, sin permisos de administrador.
+- **Linux**: doble clic en el `.deb` (se abre en el Centro de aplicaciones) o
+  `sudo apt install ./Nudge-linux-amd64.deb`.
+- **macOS**: abre el `.dmg` y arrastra Nudge a Aplicaciones.
+
+Como no está firmado con un certificado de pago, Windows (SmartScreen: "Más información → Ejecutar de
+todas formas") y macOS (clic derecho → "Abrir") avisan la primera vez. Con la instalación por terminal
+no aparece ese aviso.
 
 **Actualizaciones**: Nudge busca versiones nuevas al abrir y cada 6 horas. Cuando hay una, avisa y
 se actualiza con **Actualizar ahora**: descarga, verifica la firma e instala sola. También puedes
-volver a ejecutar el instalador de una línea. Tus recordatorios, historial y sonidos se conservan.
-
-Instalación manual: descarga el archivo de tu sistema desde Releases. Como no está firmado con un
-certificado de pago, Windows (SmartScreen: "Más información → Ejecutar de todas formas") y macOS
-(clic derecho → "Abrir") avisan la primera vez. Con el instalador de una línea no aparece ese aviso.
+volver a ejecutar el instalador. Tus recordatorios, historial y sonidos se conservan.
 
 ## Versiones y releases
 
