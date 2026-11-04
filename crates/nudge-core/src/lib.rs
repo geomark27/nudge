@@ -1,6 +1,7 @@
 //! Núcleo de Nudge: independiente de la interfaz para poder probarlo y reutilizarlo
 //! desde cualquier "cáscara" (Tauri, CLI, etc.).
 
+pub mod demo;
 pub mod model;
 pub mod schedule;
 pub mod service;

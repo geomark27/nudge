@@ -120,6 +120,7 @@ header.top select { width: auto; padding: 4px 8px; }
   font-weight: 600;
 }
 .pill.paused { background: var(--warn-soft); color: var(--warn); }
+.pill.dev { background: var(--surface-2); color: var(--danger); }
 
 main { max-width: 860px; margin: 0 auto; padding: 20px; display: grid; gap: 24px; }
 
@@ -134,7 +135,7 @@ section h2 {
   justify-content: space-between;
 }
 
-.list { display: grid; gap: 10px; }
+.list { display: grid; gap: 10px; align-content: start; }
 
 .card {
   background: var(--surface);
@@ -183,6 +184,25 @@ table.history td:last-child { text-align: right; color: var(--muted); }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); }
 .tag.done { color: var(--ok); }
 .tag.snoozed { color: var(--warn); }
+
+/* Listados por páginas: barra ‹ • • • › y deslizamiento al cambiar de página. */
+.pager { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-size: 13px; }
+.pager > button { padding: 2px 12px; font-size: 18px; line-height: 1; }
+.pager > button:disabled { opacity: 0.35; cursor: default; background: transparent; }
+.pager-dots { display: flex; align-items: center; gap: 6px; }
+.pager .dot {
+  width: 8px; height: 8px; padding: 0; border: 0; border-radius: 999px;
+  background: var(--border); transition: width 0.2s, background 0.2s;
+}
+.pager .dot:hover { background: var(--muted); }
+.pager .dot.active { width: 22px; background: var(--accent); }
+.pager button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pager-range { margin-left: 8px; font-size: 12px; }
+.slide-next > * { animation: slide-next 0.22s ease-out; }
+.slide-prev > * { animation: slide-prev 0.22s ease-out; }
+@keyframes slide-next { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes slide-prev { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .slide-next > *, .slide-prev > * { animation: none; } }
 
 section h2 select { width: auto; padding: 3px 8px; font-size: 12px; text-transform: none; letter-spacing: 0; }
 .hint { font-size: 12px; margin: 8px 0 0; }

@@ -13,8 +13,8 @@ const PAUSED_UNTIL: &str = "paused_until";
 const THEME: &str = "theme";
 
 pub struct Service<Tz: TimeZone> {
-    store: Store,
-    tz: Tz,
+    pub(crate) store: Store,
+    pub(crate) tz: Tz,
 }
 
 impl<Tz: TimeZone> Service<Tz> {
@@ -189,7 +189,7 @@ impl<Tz: TimeZone> Service<Tz> {
             .collect())
     }
 
-    fn schedule_next(&self, spec: &ReminderSpec, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
+    pub(crate) fn schedule_next(&self, spec: &ReminderSpec, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
         if spec.enabled { next_fire(spec, now, &self.tz) } else { None }
     }
 }

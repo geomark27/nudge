@@ -10,6 +10,14 @@ notas del release en GitHub.
 
 ## [Unreleased]
 
+### Cambiado
+
+- Los listados largos (recordatorios, cumplimiento, historial y sonidos) se muestran por páginas y se
+  recorren como carrusel (flechas, puntos o ← →) en lugar de crecer hacia abajo. El historial ahora
+  trae los últimos 100 registros, 10 por página.
+- Desarrollo: `cargo tauri dev` usa su propia carpeta de datos (`dev/`) y lo indica en el encabezado;
+  `make dev-seed` la llena con recordatorios de ejemplo e historial. Los releases no cambian.
+
 ## [0.1.1] - 2026-10-21
 
 ### Cambiado

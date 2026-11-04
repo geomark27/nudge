@@ -26,6 +26,7 @@ crates/nudge-core/  Lógica pura, sin UI (testeable sin GTK/WebView)
   model.rs          ReminderSpec (lo editable), Reminder (spec + estado), Schedule, Anchor,
                     Days (bitmask lun=bit0), TimeOfDay ("HH:MM"), Action, Alert, Occurrence,
                     Theme, Backup + ImportMode (respaldo), ReminderStats
+  demo.rs           Service::load_demo(now): datos de ejemplo deterministas (solo builds debug, NUDGE_SEED)
   schedule.rs       next_fire(spec, now, tz): próximo disparo; genérico sobre TimeZone
   store.rs          SQLite: migraciones por PRAGMA user_version; fechas en segundos Unix UTC;
                     spec guardado como JSON en reminders.spec
@@ -68,7 +69,7 @@ Comandos: `list_reminders`, `create_reminder{spec}`, `update_reminder{id,spec}`,
 `check_update` → `{version, notes} | null`, `install_update` (descarga, instala y reinicia).
 Los de diálogo de archivo son `async` (las variantes `blocking_*` no pueden ir en el hilo principal).
 Eventos: `reminders-changed`, `alerts-changed`, `theme-changed` (payload: el tema), `update-available`
-(`{version, notes}`), `update-progress` (`[descargados, total|null]`). `status` incluye `version`.
+(`{version, notes}`), `update-progress` (`[descargados, total|null]`). `status` incluye `version` y `dev`.
 JSON en snake_case: `schedule = {kind:"interval", every_min, anchor:"fixed"|"from_done"}` o
 `{kind:"times", times:["08:00"]}`; `action = {type:"done"|"dismiss"} | {type:"snooze", minutes}`.
 `theme = "system"|"light"|"dark"` (setting `theme`; `system` = sin fila).
@@ -83,6 +84,7 @@ cargo test -p nudge-core          # núcleo; no requiere libs gráficas
 cargo clippy --workspace --all-targets
 cargo fmt --all                   # rustfmt.toml: max_width 120
 cargo tauri dev                   # app (Linux: requiere libwebkit2gtk-4.1-dev y compañía, ver README)
+make dev-seed                     # igual, con datos de ejemplo (debug usa <app_data>/dev/, nunca los reales)
 cargo tauri build
 ```
 

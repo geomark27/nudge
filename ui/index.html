@@ -10,6 +10,7 @@
   <header class="top">
     <h1>Nudge</h1>
     <span id="status" class="pill">Activo</span>
+    <span id="dev" class="pill dev hidden" title="Build de depuración: datos de desarrollo, no los reales">Desarrollo</span>
     <div class="spacer"></div>
     <button id="pause-30" title="Silenciar todas las alertas">Pausar 30 min</button>
     <button id="pause-60">Pausar 1 h</button>
@@ -54,7 +55,7 @@
 
     <section>
       <h2>Historial reciente</h2>
-      <table class="history"><tbody id="history"></tbody></table>
+      <div id="history-frame"><table class="history"><tbody id="history"></tbody></table></div>
     </section>
 
     <section>

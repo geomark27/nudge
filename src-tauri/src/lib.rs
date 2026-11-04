@@ -47,6 +47,8 @@ struct Status {
     paused_until: Option<DateTime<Utc>>,
     autostart: bool,
     version: String,
+    /// Build de depuración: usa la carpeta de datos de desarrollo (`data_dir`).
+    dev: bool,
 }
 
 /// Versión nueva publicada en GitHub Releases.
@@ -115,6 +117,7 @@ fn status(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Status> {
         paused_until: with_service(&state, |s| s.paused_until(Utc::now()))?,
         autostart: app.autolaunch().is_enabled().unwrap_or(false),
         version: app.package_info().version.to_string(),
+        dev: cfg!(debug_assertions),
     })
 }
 
@@ -308,7 +311,14 @@ fn read_sound(app: AppHandle, name: String) -> CmdResult<tauri::ipc::Response> {
 }
 
 fn sounds_dir(app: &AppHandle) -> CmdResult<PathBuf> {
-    app.path().app_data_dir().map(|d| d.join("sounds")).map_err(|e| e.to_string())
+    data_dir(app).map(|d| d.join("sounds")).map_err(|e| e.to_string())
+}
+
+/// Carpeta de datos (base y sonidos). Los builds de depuración (`cargo tauri dev`) usan `dev/`
+/// dentro de la normal: así no tocan los recordatorios reales y pueden cargar datos de ejemplo.
+fn data_dir(app: &AppHandle) -> tauri::Result<PathBuf> {
+    let dir = app.path().app_data_dir()?;
+    Ok(if cfg!(debug_assertions) { dir.join("dev") } else { dir })
 }
 
 /// Ruta de un sonido propio; rechaza nombres que saldrían de la carpeta.
@@ -503,10 +513,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            let dir = app.path().app_data_dir()?;
+            let dir = data_dir(app.handle())?;
             std::fs::create_dir_all(&dir)?;
             let store = Store::open(dir.join("nudge.db"))?;
-            app.manage(AppState(Mutex::new(Service::new(store, Local))));
+            let service = Service::new(store, Local);
+            // `make dev-seed`: reemplaza los datos de desarrollo por los de ejemplo. No existe en release.
+            #[cfg(debug_assertions)]
+            if std::env::var_os("NUDGE_SEED").is_some() {
+                let answers = service.load_demo(Utc::now())?;
+                eprintln!("Nudge (dev): datos de ejemplo cargados en {} ({answers} respuestas)", dir.display());
+            }
+            app.manage(AppState(Mutex::new(service)));
 
             #[cfg(target_os = "linux")]
             show_all_title_buttons();

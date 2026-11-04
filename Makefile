@@ -7,13 +7,16 @@ SHELL := bash
 CARGO ?= cargo
 PYTHON ?= python3
 
-.PHONY: help dev build test test-all lint fmt fmt-check check icons icon clean version notes release updater-key
+.PHONY: help dev dev-seed build test test-all lint fmt fmt-check check icons icon clean version notes release updater-key
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  \033[36mmake %-10s\033[0m %s\n", $$1, $$2}'
 
-dev: ## Ejecuta la app con recarga (cargo tauri dev)
+dev: ## Ejecuta la app con recarga (cargo tauri dev) sobre los datos de desarrollo
 	$(CARGO) tauri dev
+
+dev-seed: ## Como `dev`, pero antes reemplaza los datos de desarrollo por los de ejemplo
+	NUDGE_SEED=1 $(CARGO) tauri dev
 
 build: ## Genera los instaladores (cargo tauri build)
 	$(CARGO) tauri build

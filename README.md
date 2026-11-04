@@ -71,6 +71,14 @@ cargo tauri dev               # ejecuta la app con recarga
 cargo tauri build             # instalador del sistema actual: NSIS (.exe), .deb o .dmg
 ```
 
+**Datos de desarrollo.** Los builds de depuración (`cargo tauri dev`) guardan todo en la subcarpeta
+`dev/` del directorio de datos (por ejemplo `~/.local/share/dev.ramosmg.nudge/dev/` en Linux o
+`%APPDATA%\dev.ramosmg.nudge\dev\` en Windows), así que no tocan tus recordatorios reales; el
+encabezado muestra "Desarrollo". `make dev-seed` (`NUDGE_SEED=1 cargo tauri dev`) reemplaza esos
+datos por recordatorios de ejemplo con 30 días de historial. Ojo: si cambias código Rust, la recarga
+reinicia la app con la misma variable y vuelve a cargarlos. Para empezar vacío, borra `dev/nudge.db`.
+Un release (`cargo tauri build`) usa la carpeta normal y no incluye los datos de ejemplo.
+
 ## Instalación
 
 Hay un instalador por sistema. Estos enlaces descargan siempre la última versión:
