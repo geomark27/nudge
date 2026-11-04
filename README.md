@@ -141,8 +141,9 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/) y los cambios se anot
 
 ```sh
 make notes                                  # qué saldrá en el próximo release
-make release VERSION=0.2.0 DRY_RUN=1        # simula: verifica todo sin tocar nada
-make release VERSION=0.2.0                  # publica
+make release bump=patch DRY_RUN=1           # simula: verifica todo sin tocar nada
+make release bump=patch                     # publica 0.1.1 → 0.1.2 (minor → 0.2.0, major → 1.0.0)
+make release ver=v0.2.0                     # o una versión exacta
 ```
 
 `make release` verifica la rama `main`, que no haya cambios sin commit, que el tag esté libre y que pase

@@ -55,8 +55,8 @@ version: ## Muestra la versión actual y el último tag
 notes: ## Muestra lo pendiente de publicar ([Unreleased] de CHANGELOG.md)
 	@bash scripts/changelog-notes.sh Unreleased
 
-release: ## Publica una versión: make release VERSION=0.1.0 (DRY_RUN=1 solo simula)
-	@bash scripts/release.sh "$(VERSION)" $(if $(DRY_RUN),--dry-run)
+release: ## Publica una versión: make release bump=patch|minor|major | ver=vX.Y.Z (DRY_RUN=1 solo simula)
+	@bash scripts/release.sh "$(bump)" "$(or $(ver),$(VERSION))" $(if $(DRY_RUN),--dry-run)
 
 updater-key: ## Una sola vez: crea la llave de firma de actualizaciones y la sube como secreto a GitHub
 	@bash scripts/updater-key.sh
