@@ -61,6 +61,9 @@ case "$OS" in
 esac
 
 URL=$(asset_url "$PATTERN")
+if [ -z "$URL" ] && [ "$KIND" = dmg ]; then
+  die "el release $VERSION no trae instalador de macOS; la ultima con macOS es v0.1.1: ... | NUDGE_VERSION=v0.1.1 bash"
+fi
 [ -n "$URL" ] || die "el release $VERSION no tiene instalador $KIND"
 FILE="$TMP/$(basename "$URL")"
 

@@ -93,6 +93,8 @@ Releases: anota cada cambio en `[Unreleased]` de `CHANGELOG.md` **en el mismo co
 Un instalador por SO con **nombre fijo** (`Nudge-windows-x64-setup.exe`, `Nudge-linux-amd64.deb`,
 `Nudge-macos-universal.dmg`; más `Nudge-macos-universal.app.tar.gz` y `latest.json` para el actualizador):
 el README enlaza `releases/latest/download/<nombre>`, así que no los renombres.
+**macOS en pausa desde v0.1.2**: GitHub no asignaba runner macOS y el release quedaba en borrador; se quitó
+de la matriz de `release.yml` (comentario ahí para reactivarlo). La última versión con `.dmg` es la 0.1.1.
 La versión vive en `Cargo.toml` (`[workspace.package]`) y `src-tauri/tauri.conf.json`: deben coincidir.
 
 Actualizador: `tauri-plugin-updater` lee `releases/latest/download/latest.json`. Las firmas `.sig` solo

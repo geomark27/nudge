@@ -87,9 +87,11 @@ Hay un instalador por sistema. Estos enlaces descargan siempre la última versi�
 |---|---|---|
 | Windows 10/11 (x64) | [`Nudge-windows-x64-setup.exe`](https://github.com/geomark27/nudge/releases/latest/download/Nudge-windows-x64-setup.exe) | Sí (PowerShell) |
 | Linux x64 con apt: Ubuntu, Debian, Mint, Pop!_OS… | [`Nudge-linux-amd64.deb`](https://github.com/geomark27/nudge/releases/latest/download/Nudge-linux-amd64.deb) | Sí (pide `sudo`) |
-| macOS (Intel y Apple Silicon) | [`Nudge-macos-universal.dmg`](https://github.com/geomark27/nudge/releases/latest/download/Nudge-macos-universal.dmg) | Sí |
+| macOS (Intel y Apple Silicon), **solo v0.1.1** | [`Nudge-macos-universal.dmg`](https://github.com/geomark27/nudge/releases/download/v0.1.1/Nudge-macos-universal.dmg) | Sí, con `NUDGE_VERSION=v0.1.1` |
 
-Otras distribuciones de Linux (Fedora, Arch, openSUSE…) no tienen instalador por ahora.
+Otras distribuciones de Linux (Fedora, Arch, openSUSE…) no tienen instalador por ahora. Desde la
+v0.1.2 tampoco se publica instalador de macOS (GitHub Actions no asignaba máquinas macOS para
+compilarlo); la última versión para macOS es la 0.1.1.
 
 ### Por terminal
 
@@ -150,7 +152,7 @@ make release ver=v0.2.0                     # o una versión exacta
 `make check`. Luego fija la versión en `Cargo.toml` y `tauri.conf.json`, convierte [Unreleased] en la
 sección de la versión, crea el commit `release: vX.Y.Z` y el tag, sube ambos y abre el release en
 borrador con `gh`. El workflow [`release.yml`](.github/workflows/release.yml) compila los instaladores
-en Windows, Linux y macOS, los adjunta al release y lo publica cuando los tres terminan bien.
+en Windows y Linux (macOS está en pausa), los adjunta al release y lo publica cuando todos terminan bien.
 
 ## Pendientes conocidos
 

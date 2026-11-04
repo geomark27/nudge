@@ -21,6 +21,11 @@ notas del release en GitHub.
   `make dev-seed` la llena con recordatorios de ejemplo e historial. Los releases no cambian.
 - `make release` elige el tipo de versión: `bump=patch|minor|major` o `ver=vX.Y.Z`.
 
+### Eliminado
+
+- Instalador de macOS, por ahora: GitHub Actions no asigna máquinas macOS para compilarlo. La última
+  versión para macOS es la 0.1.1 (sigue descargable en su release).
+
 ## [0.1.1] - 2026-10-21
 
 ### Cambiado

@@ -1,5 +1,5 @@
 # Compila y firma los instaladores al subir un tag vX.Y.Z (lo hace `make release`), los adjunta al
-# release junto con latest.json (para el actualizador) y lo publica cuando los tres sistemas
+# release junto con latest.json (para el actualizador) y lo publica cuando todos los sistemas
 # terminaron bien. Si algo falla, el release queda en borrador y se puede relanzar el workflow
 # desde la pestaña Actions.
 name: Release
@@ -50,11 +50,12 @@ jobs:
           - name: Linux
             os: ubuntu-22.04
             args: ""
-          # Intel en lugar de macos-latest (arm64): GitHub se quedó sin capacidad arm64 y el job se
-          # canceló sin arrancar. El .dmg sigue siendo universal. Intel se retira en otoño de 2027.
-          - name: macOS
-            os: macos-15-intel
-            args: --target universal-apple-darwin
+          # macOS en pausa desde v0.1.2: GitHub no asignaba runner (ni arm64 ni Intel) y el job se
+          # cancelaba sin arrancar, dejando el release en borrador. Para reactivarlo basta volver a
+          # agregar esta entrada (los pasos de macOS de abajo siguen listos):
+          #   - name: macOS
+          #     os: macos-latest
+          #     args: --target universal-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
