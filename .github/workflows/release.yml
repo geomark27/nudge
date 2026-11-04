@@ -50,8 +50,10 @@ jobs:
           - name: Linux
             os: ubuntu-22.04
             args: ""
+          # Intel en lugar de macos-latest (arm64): GitHub se quedó sin capacidad arm64 y el job se
+          # canceló sin arrancar. El .dmg sigue siendo universal. Intel se retira en otoño de 2027.
           - name: macOS
-            os: macos-latest
+            os: macos-15-intel
             args: --target universal-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
