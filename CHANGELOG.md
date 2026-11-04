@@ -5,7 +5,7 @@ Todos los cambios relevantes de Nudge se anotan aquí. El formato sigue
 [Versionado Semántico](https://semver.org/lang/es/): `MAYOR.MENOR.PARCHE`.
 
 Mientras trabajas, anota los cambios en **[Unreleased]** bajo *Añadido*, *Cambiado*, *Corregido* o
-*Eliminado*. `make release VERSION=x.y.z` convierte esa sección en la de la versión y la usa como
+*Eliminado*. `make release bump=patch|minor|major` convierte esa sección en la de la versión y la usa como
 notas del release en GitHub.
 
 ## [Unreleased]
@@ -17,6 +17,7 @@ notas del release en GitHub.
   trae los últimos 100 registros, 10 por página.
 - Desarrollo: `cargo tauri dev` usa su propia carpeta de datos (`dev/`) y lo indica en el encabezado;
   `make dev-seed` la llena con recordatorios de ejemplo e historial. Los releases no cambian.
+- `make release` elige el tipo de versión: `bump=patch|minor|major` o `ver=vX.Y.Z`.
 
 ## [0.1.1] - 2026-10-21
 

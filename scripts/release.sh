@@ -6,19 +6,36 @@
 # Al recibir el tag, GitHub Actions (.github/workflows/release.yml) compila los instaladores de
 # Windows, Linux y macOS, los sube al release y lo publica.
 #
-# Uso: scripts/release.sh 0.1.0 [--dry-run]     (o: make release VERSION=0.1.0 [DRY_RUN=1])
+# Uso: scripts/release.sh <patch|minor|major|""> [X.Y.Z] [--dry-run]
+#   make release bump=patch|minor|major     sube esa parte de la versión actual (Cargo.toml)
+#   make release ver=vX.Y.Z                 versión exacta (la "v" es opcional)
+#   DRY_RUN=1                               solo muestra qué haría
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 die() { echo "✗ $*" >&2; exit 1; }
 step() { echo "→ $*"; }
 
-version=${1:-}
+bump=${1:-}
+version=${2#v}
 dry_run=false
-[[ ${2:-} == "--dry-run" ]] && dry_run=true
-[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "indica la versión como X.Y.Z, p. ej.: make release VERSION=0.1.0"
-tag="v$version"
+[[ ${3:-} == "--dry-run" ]] && dry_run=true
 branch=main
+
+current=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+[[ -z $bump || -z $version ]] || die "usa bump= o ver=, no los dos"
+if [[ -n $bump ]]; then
+  IFS=. read -r major minor patch <<<"$current"
+  case $bump in
+    patch) version="$major.$minor.$((patch + 1))" ;;
+    minor) version="$major.$((minor + 1)).0" ;;
+    major) version="$((major + 1)).0.0" ;;
+    *) die "bump inválido: '$bump' (patch, minor o major)" ;;
+  esac
+fi
+[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+  || die "indica el tipo de release: make release bump=patch|minor|major  (o ver=vX.Y.Z)"
+tag="v$version"
 
 # ---------- Verificaciones ----------
 
@@ -39,7 +56,6 @@ git fetch --quiet --tags origin "$branch"
 git merge-base --is-ancestor "origin/$branch" HEAD || die "tu '$branch' está atrasada respecto a origin: haz pull"
 git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "el tag $tag ya existe"
 
-current=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
 if [[ $version != "$current" ]]; then
   newest=$(printf '%s\n%s\n' "$current" "$version" | sort -V | tail -1)
   [[ $newest == "$version" ]] || die "$version es anterior a la versión actual ($current)"
