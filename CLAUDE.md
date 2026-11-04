@@ -36,7 +36,7 @@ crates/nudge-core/  Lógica pura, sin UI (testeable sin GTK/WebView)
 src-tauri/src/lib.rs  Comandos Tauri, bandeja, ventana de alerta, hilo planificador (cada 15 s)
 ui/                 index.html+app.js (configuración), alert.html+alert.js, common.js, style.css
 scripts/gen_icons.py  Íconos provisionales sin dependencias
-scripts/release.sh    `make release VERSION=x.y.z`: versión + CHANGELOG + commit + tag + release (gh)
+scripts/release.sh    `make release bump=patch|minor|major`: versión + CHANGELOG + commit + tag + release (gh)
 scripts/changelog-notes.sh  Extrae una sección de CHANGELOG.md (notas del release; también lo usa el CI)
 scripts/install.ps1, install.sh  Instaladores de una línea (último release o NUDGE_VERSION)
 scripts/updater-key.sh  `make updater-key`: llave de firma de actualizaciones (una sola vez)
@@ -89,7 +89,7 @@ cargo tauri build
 ```
 
 Releases: anota cada cambio en `[Unreleased]` de `CHANGELOG.md` **en el mismo commit**. Publicar es
-`make release VERSION=x.y.z` (`DRY_RUN=1` simula); el tag dispara el CI que sube los instaladores.
+`make release bump=patch|minor|major` o `ver=vX.Y.Z` (`DRY_RUN=1` simula); el tag dispara el CI que sube los instaladores.
 Un instalador por SO con **nombre fijo** (`Nudge-windows-x64-setup.exe`, `Nudge-linux-amd64.deb`,
 `Nudge-macos-universal.dmg`; más `Nudge-macos-universal.app.tar.gz` y `latest.json` para el actualizador):
 el README enlaza `releases/latest/download/<nombre>`, así que no los renombres.
